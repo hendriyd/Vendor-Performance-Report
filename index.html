@@ -1,0 +1,51 @@
+﻿<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vendor Performance Report</title>
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="workspace" aria-label="Form input VPR">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Ray White</p>
+          <h1>Vendor Performance Report</h1>
+        </div>
+        <div class="raywhite-logo app-logo" aria-label="Ray White logo">
+          <span>Ray White</span>
+        </div>
+        <div class="actions">
+          <button id="saveDraft" class="button ghost" type="button">Simpan Draft</button>
+          <button id="resetForm" class="button ghost" type="button">Reset</button>
+          <button id="downloadPdf" class="button primary" type="button">Download PDF</button>
+          <a id="pdfLink" class="button ghost pdf-link" href="#" target="_blank" hidden>Buka PDF</a>
+        </div>
+      </header>
+
+      <form id="vprForm" class="form-grid">
+        <fieldset class="panel vendor-panel">
+          <legend>Informasi Vendor</legend>
+          <label>Vendor Name<input name="vendorName" autocomplete="organization" /></label>
+          <label>Phone<input name="phone" autocomplete="tel" /></label>
+          <label>Agent Name<input name="agentName" autocomplete="name" /></label>
+        </fieldset>
+
+        <div id="reportBlocks" class="blocks"></div>
+      </form>
+    </section>
+
+    <aside class="preview-shell" aria-label="Preview report">
+      <div class="preview-toolbar">
+        <strong>Preview PDF</strong>
+        <span id="draftState">Belum disimpan</span>
+      </div>
+      <article id="reportPreview" class="report-page"></article>
+    </aside>
+  </main>
+
+  <script src="app.js?v=4"></script>
+</body>
+</html>
