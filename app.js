@@ -86,7 +86,7 @@ function buildBlocks() {
 function readData() {
   const data = {
     vendorName: value("vendorName"),
-    phone: value("phone"),
+    Alamat: value("alamat"),
     agentName: value("agentName"),
     blocks: []
   };
@@ -121,7 +121,7 @@ function renderPreview() {
     </div>
     <div class="report-meta">
       <div class="report-line"><span>Vendor Name :</span><span>${show(data.vendorName)}</span></div>
-      <div class="report-line"><span>phone :</span><span>${show(data.phone)}</span></div>
+      <div class="report-line"><span>Alamat :</span><span>${show(data.alamat)}</span></div>
     </div>
     <div class="report-line"><span>Agent Name :</span><span>${show(data.agentName)}</span></div>
     ${data.blocks.map(block => `
@@ -211,7 +211,7 @@ function createPdf(data) {
   rect(36, 792, 372, 30); text(128, 803, "Vendor Performance Report", 16, true);
   fillRect(438, 792, 121, 30, "1 0.88 0"); rect(438, 792, 121, 30); text(460, 803, "Ray White", 15, true);
   y = 766;
-  metaLine(40, "Vendor Name :", data.vendorName); metaLine(320, "Phone :", data.phone); y -= 22;
+  metaLine(40, "Vendor Name :", data.vendorName); metaLine(320, "Alamat :", data.alamat); y -= 22;
   metaLine(40, "Agent Name :", data.agentName); y -= 28;
 
   for (const block of data.blocks) {
