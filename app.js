@@ -1,12 +1,13 @@
-﻿const channels = ["FT/OH", "Banner", "Lamudi", "Rumah123", "OLX", "Instagram", "Tiktok", "Youtube"];
-const metrics = ["Visit", "View", "Leads", "Offer"];
-const blockCount = 4;
+const channels = ["FT/OH", "Banner", "Lamudi", "Rumah123", "Instagram", "Tiktok", "OLX", "Youtube"];
+const metrics = ["View", "Visit", "Leads", "Offer"];
+const blockCount = 1;
 const form = document.querySelector("#vprForm");
 const blocks = document.querySelector("#reportBlocks");
 const preview = document.querySelector("#reportPreview");
 const draftState = document.querySelector("#draftState");
 const pdfLink = document.querySelector("#pdfLink");
 let activePdfUrl = "";
+let logoImageCache = null;
 
 function fieldName(block, metric, channel) {
   return `block${block}_${metric}_${channel.replace(/[^a-z0-9]/gi, "_")}`;
@@ -42,14 +43,13 @@ function buildBlocks() {
     const fieldset = document.createElement("fieldset");
     fieldset.className = "panel";
     fieldset.innerHTML = `
-      <legend>Listing ${i}</legend>
+      <legend>Listing</legend>
       <div class="block-head">
         <label>Propety Type
           <select name="block${i}_propertyType">
             <option value="">Pilih</option>
             <option value="Rumah">Rumah</option>
             <option value="Tanah">Tanah</option>
-            <option value="Apartemen">Apartemen</option>
             <option value="Ruko">Ruko</option>
             <option value="Gedung">Gedung</option>
             <option value="Gudang">Gudang</option>
@@ -86,7 +86,7 @@ function buildBlocks() {
 function readData() {
   const data = {
     vendorName: value("vendorName"),
-    Alamat: value("alamat"),
+    address: value("address"),
     agentName: value("agentName"),
     blocks: []
   };
@@ -117,11 +117,11 @@ function renderPreview() {
   preview.innerHTML = `
     <div class="report-header">
       <h2 class="report-title">Vendor Performance Report</h2>
-      <div class="raywhite-logo report-logo" aria-label="Ray White logo"><span>Ray White</span></div>
+      <img class="raywhite-logo report-logo" src="assets/logo-raywhite.jpg" alt="Ray White" />
     </div>
     <div class="report-meta">
       <div class="report-line"><span>Vendor Name :</span><span>${show(data.vendorName)}</span></div>
-      <div class="report-line"><span>Alamat :</span><span>${show(data.alamat)}</span></div>
+      <div class="report-line"><span>Alamat :</span><span>${show(data.address)}</span></div>
     </div>
     <div class="report-line"><span>Agent Name :</span><span>${show(data.agentName)}</span></div>
     ${data.blocks.map(block => `
@@ -135,10 +135,12 @@ function renderPreview() {
           <div class="report-line"><span>Date Published :</span><span>${show(block.datePublished)}</span></div>
         </div>
         <div class="report-section-title">Marketing Activity And Advertising</div>
-        <table class="report-table">
-          <thead><tr><th></th>${channels.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-          <tbody>${metrics.map(metric => `<tr><td>${metric}</td>${channels.map(channel => `<td>${show(block.metrics[metric][channel])}</td>`).join("")}</tr>`).join("")}</tbody>
-        </table>
+        <div class="report-table-scroll">
+          <table class="report-table">
+            <thead><tr><th></th>${channels.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+            <tbody>${metrics.map(metric => `<tr><td>${metric}</td>${channels.map(channel => `<td>${show(block.metrics[metric][channel])}</td>`).join("")}</tr>`).join("")}</tbody>
+          </table>
+        </div>
         <div class="report-reco"><strong>Recommendation :</strong>${show(block.recommendation)}</div>
       </section>
     `).join("")}
@@ -197,7 +199,38 @@ function wrapText(text, maxChars) {
   return lines.length ? lines : [""];
 }
 
-function createPdf(data) {
+function readJpegSize(bytes) {
+  let offset = 2;
+  while (offset < bytes.length) {
+    if (bytes[offset] !== 0xFF) break;
+    const marker = bytes[offset + 1];
+    const length = (bytes[offset + 2] << 8) + bytes[offset + 3];
+    if (marker >= 0xC0 && marker <= 0xC3) {
+      return {
+        height: (bytes[offset + 5] << 8) + bytes[offset + 6],
+        width: (bytes[offset + 7] << 8) + bytes[offset + 8],
+      };
+    }
+    offset += 2 + length;
+  }
+  return { width: 500, height: 500 };
+}
+
+async function loadLogoImage() {
+  if (logoImageCache) return logoImageCache;
+  try {
+    const response = await fetch("assets/logo-raywhite.jpg", { cache: "force-cache" });
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    logoImageCache = { bytes, ...readJpegSize(bytes) };
+    return logoImageCache;
+  } catch {
+    return null;
+  }
+}
+
+async function createPdf(data) {
+  const logoImage = await loadLogoImage();
   const width = 595.28, height = 841.89;
   let y = 804;
   const ops = [];
@@ -209,9 +242,22 @@ function createPdf(data) {
 
   ops.push("0.75 w 0 0 0 RG");
   rect(36, 792, 372, 30); text(128, 803, "Vendor Performance Report", 16, true);
-  fillRect(438, 792, 121, 30, "1 0.88 0"); rect(438, 792, 121, 30); text(460, 803, "Ray White", 15, true);
+  if (logoImage) {
+    const logoMaxW = 64;
+    const logoMaxH = 64;
+    const logoRatio = logoImage.width / logoImage.height;
+    let logoW = logoMaxW;
+    let logoH = logoW / logoRatio;
+    if (logoH > logoMaxH) {
+      logoH = logoMaxH;
+      logoW = logoH * logoRatio;
+    }
+    ops.push(`q ${logoW.toFixed(2)} 0 0 ${logoH.toFixed(2)} ${(559 - logoW).toFixed(2)} ${(790 - logoH).toFixed(2)} cm /Im1 Do Q`);
+  } else {
+    fillRect(438, 792, 121, 30, "1 0.88 0"); rect(438, 792, 121, 30); text(460, 803, "Ray White", 15, true);
+  }
   y = 766;
-  metaLine(40, "Vendor Name :", data.vendorName); metaLine(320, "Alamat :", data.alamat); y -= 22;
+  metaLine(40, "Vendor Name :", data.vendorName); metaLine(320, "Alamat :", data.address); y -= 22;
   metaLine(40, "Agent Name :", data.agentName); y -= 28;
 
   for (const block of data.blocks) {
@@ -220,52 +266,76 @@ function createPdf(data) {
     metaLine(40, "Price :", block.price); metaLine(320, "Date Published :", block.datePublished); y -= 22;
     fillRect(40, y - 18, 515, 20, "0.18 0.44 0.31"); text(222, y - 12, "Marketing Activity And Advertising", 9, true); y -= 18;
 
-    const tableX = 40, tableW = 515, rowH = 19, firstW = 58, colW = (tableW - firstW) / channels.length;
+    const tableX = 40, tableW = 515, rowH = 19, firstW = 59;
+    const tableRight = tableX + tableW;
+    const dataX = tableX + firstW;
+    const colW = (tableRight - dataX) / channels.length;
+    const tableRows = metrics.length + 1;
     fillRect(tableX, y - rowH, tableW, rowH, "0.94 0.96 0.95");
-    rect(tableX, y - rowH, tableW, rowH * 4);
-    for (let r = 0; r <= 4; r++) line(tableX, y - rowH * r, tableX + tableW, y - rowH * r);
-    line(tableX + firstW, y, tableX + firstW, y - rowH * 4);
+    rect(tableX, y, tableW, -rowH * tableRows);
+    for (let r = 0; r <= tableRows; r++) line(tableX, y - rowH * r, tableX + tableW, y - rowH * r);
+    line(tableX + firstW, y, tableX + firstW, y - rowH * tableRows);
     channels.forEach((channel, idx) => {
-      const x = tableX + firstW + (idx * colW);
-      line(x, y, x, y - rowH * 4);
-      text(x + 3, y - 13, channel.length > 9 ? channel.slice(0, 9) : channel, 7, true);
+      const x = dataX + idx * colW;
+      const label = channel.length > 8 ? channel.slice(0, 8) : channel;
+      if (idx > 0) line(x, y, x, y - rowH * tableRows);
+      text(x + 4, y - 13, label, channel.length > 7 ? 6.4 : 7, true);
     });
+    line(tableRight, y, tableRight, y - rowH * tableRows);
     metrics.forEach((metric, rIdx) => {
       const rowY = y - rowH * (rIdx + 1) - 13;
       text(tableX + 5, rowY, metric, 8, true);
-      channels.forEach((channel, cIdx) => text(tableX + firstW + cIdx * colW + 5, rowY, block.metrics[metric][channel], 8, false));
+      channels.forEach((channel, cIdx) => text(dataX + cIdx * colW + 5, rowY, block.metrics[metric][channel], 8, false));
     });
-    y -= rowH * 4 + 18;
+    y -= rowH * tableRows + 18;
     text(40, y, "Recommendation :", 9, true);
     const lines = wrapText(block.recommendation, 92).slice(0, 3);
     lines.forEach((ln, idx) => text(122, y - idx * 12, ln, 9, false));
     y -= 48;
   }
 
-  const stream = ops.join("\n");
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`
-  ];
-  let pdf = "%PDF-1.4\n";
-  const xref = [0];
-  objects.forEach((obj, idx) => { xref.push(pdf.length); pdf += `${idx + 1} 0 obj\n${obj}\nendobj\n`; });
-  const start = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  xref.slice(1).forEach(pos => { pdf += `${String(pos).padStart(10, "0")} 00000 n \n`; });
-  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${start}\n%%EOF`;
-  return new Blob([pdf], {type: "application/pdf"});
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [0];
+  let byteOffset = 0;
+  const append = part => {
+    const bytes = typeof part === "string" ? encoder.encode(part) : part;
+    chunks.push(bytes);
+    byteOffset += bytes.length;
+  };
+  const addObject = (number, parts) => {
+    offsets[number] = byteOffset;
+    append(`${number} 0 obj\n`);
+    for (const part of parts) append(part);
+    append("\nendobj\n");
+  };
+
+  const streamBytes = encoder.encode(ops.join("\n"));
+  const xObjectResource = logoImage ? " /XObject << /Im1 7 0 R >>" : "";
+  append("%PDF-1.4\n");
+  addObject(1, ["<< /Type /Catalog /Pages 2 0 R >>"]);
+  addObject(2, ["<< /Type /Pages /Kids [3 0 R] /Count 1 >>"]);
+  addObject(3, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${xObjectResource} >> /Contents 6 0 R >>`]);
+  addObject(4, ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]);
+  addObject(5, ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"]);
+  addObject(6, [`<< /Length ${streamBytes.length} >>\nstream\n`, streamBytes, "\nendstream"]);
+  if (logoImage) {
+    addObject(7, [`<< /Type /XObject /Subtype /Image /Width ${logoImage.width} /Height ${logoImage.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logoImage.bytes.length} >>\nstream\n`, logoImage.bytes, "\nendstream"]);
+  }
+
+  const objectCount = logoImage ? 7 : 6;
+  const xrefStart = byteOffset;
+  append(`xref\n0 ${objectCount + 1}\n0000000000 65535 f \n`);
+  for (let i = 1; i <= objectCount; i++) append(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
+  append(`trailer << /Size ${objectCount + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+  return new Blob(chunks, {type: "application/pdf"});
 }
 
-function downloadPdf() {
+async function downloadPdf() {
   try {
     renderPreview();
     const data = readData();
-    const blob = createPdf(data);
+    const blob = await createPdf(data);
     if (activePdfUrl) URL.revokeObjectURL(activePdfUrl);
     const url = URL.createObjectURL(blob);
     activePdfUrl = url;
@@ -305,4 +375,7 @@ document.querySelector("#resetForm").addEventListener("click", () => {
   draftState.textContent = "Belum disimpan";
   renderPreview();
 });
+
+
+
 
