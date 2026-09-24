@@ -49,6 +49,7 @@ function buildBlocks() {
           <select name="block${i}_propertyType">
             <option value="">Pilih</option>
             <option value="Rumah">Rumah</option>
+             <option value="Apartemen">Apartemen</option>
             <option value="Tanah">Tanah</option>
             <option value="Ruko">Ruko</option>
             <option value="Gedung">Gedung</option>
