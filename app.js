@@ -1,4 +1,4 @@
-const channels = ["FT/OH", "Banner", "Lamudi", "Rumah123", "Instagram", "Tiktok", "OLX", "Youtube"];
+const channels = ["FT/OH", "Banner", "Lamudi", "Rumah123", "Instagram", "Tiktok", "OLX", "Threads"];
 const metrics = ["View", "Visit", "Leads", "Offer"];
 const blockCount = 1;
 const form = document.querySelector("#vprForm");
